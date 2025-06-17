@@ -1,20 +1,72 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import ToggleIcon from "./ToggleIcon";
-import Logo from "./Logo";
-import Link from "next/link";
-import { Input } from "@/components/ui/input";
-import { CiSearch } from "react-icons/ci";
-import { IoIosClose } from "react-icons/io";
+'use client';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
+import MobileNav from './MobileNav';
+import Sidebar from './Sidebar';
+import ChatInputForm from './ChatInputForm';
+import { Darumadrop_One } from 'next/font/google';
+import { MdGrid3X3, MdSportsGolf } from 'react-icons/md';
 
-const Main = () => {
-  const [toggleSidebar, setToggleSidebar] = useState(true);
+const Main2 = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sideBarWidth, setSideBarWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<{ role: string; text: string }[]>(
+    [],
+  );
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    console.log('submitted');
+    if (!message.trim()) return;
+    const userMessage = message;
+    setMessage('');
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userMessage }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'user', text: userMessage },
+          { role: 'ai', text: data.reply },
+        ]);
+      } else {
+        console.error('Gemini error', data.error);
+      }
+    } catch (err) {
+      console.log(err);
+      console.error('Failed to fetch', err);
+    }
+  };
+  // load previous chats
+  useEffect(() => {
+    const fetchChat = async () => {
+      try {
+        const res = await fetch('/api/chat');
+        const data = await res.json();
+        if (res.ok) {
+          setMessages(data.messages);
+        }
+      } catch (err) {
+        console.error('Error fetching chat:', err);
+      }
+    };
+    fetchChat();
+  }, []);
+
   const handleToggleSideBar = () => {
-    setToggleSidebar((prev) => !prev);
-    console.log("clicked");
+    setIsSidebarOpen((prev) => !prev);
+    console.log('clicked');
   };
   const handleMouseUp = () => {
     setIsResizing(false);
@@ -26,117 +78,107 @@ const Main = () => {
   const handleMouseMove = (e: MouseEvent) => {
     if (isResizing) {
       const newWidth = e.clientX;
-      if (newWidth > 150 && newWidth < 400) {
+      if (newWidth > 150 && newWidth < 500) {
         setSideBarWidth(newWidth);
-        console.log("new width id", newWidth);
+        console.log('new width id', newWidth);
       }
     }
   };
 
   useEffect(() => {
     if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     } else {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
 
   //close sidebar if clicked outside
   const handleCloseSidebar = (e: MouseEvent) => {
-    if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
-      setToggleSidebar(false);
+    if (
+      sidebarRef.current &&
+      !sidebarRef.current.contains(e.target as Node) &&
+      window.innerWidth < 768
+    ) {
+      setIsSidebarOpen(false);
     }
+    console.log('clicked outside');
   };
   useEffect(() => {
-    if (toggleSidebar) {
-      document.addEventListener("mousedown", handleCloseSidebar);
+    if (isSidebarOpen) {
+      document.addEventListener('mousedown', handleCloseSidebar);
     } else {
-      document.removeEventListener("mousedown", handleCloseSidebar);
+      document.removeEventListener('mousedown', handleCloseSidebar);
     }
     return () => {
-      document.removeEventListener("mousedown", handleCloseSidebar);
+      document.removeEventListener('mousedown', handleCloseSidebar);
     };
-  }, [toggleSidebar]);
+  }, [isSidebarOpen]);
   return (
-    <div className="flex  ">
+    <div className='relative flex h-screen p-2'>
+      {/* Mobile Top Bar left*/}
+      <MobileNav handleToggleSidebar={handleToggleSideBar} />
       {/*Sidebar*/}
-      <div className=" flex bg-green-200 ">
-        {toggleSidebar ? (
-          <div
-            ref={sidebarRef}
-            style={{ width: `${sideBarWidth}px` }}
-            className={`bg-[#20131d] text-[#f9f8fb]  h-screen  relative   flex flex-col p-2 gap-2`}
-          >
-            <div className="flex ">
-              <Button
-                className="text-white p-0  "
-                onClick={handleToggleSideBar}
-              >
-                <ToggleIcon />
+      {isSidebarOpen && (
+        <Sidebar
+          messages={messages}
+          sidebarRef={sidebarRef}
+          sideBarWidth={sideBarWidth}
+          isSidebarOpen={isSidebarOpen}
+          onMouseDown={handleMouseDown}
+          onToggleSideBar={handleToggleSideBar}
+        />
+      )}
 
-                <Link href="/">
-                  <Logo />
-                </Link>
-              </Button>
-            </div>
+      {/*Chat*/}
 
-            <div className=" text-center w-full ">
-              <Button className="bg-[#A3004c33] justify-center   w-full border   text-sm hover:bg-[#a3004c75] text-[#fbd0e8] border-[#b04680] px-2 py-1 text-center">
-                New Chat
-              </Button>
+      {/* Main Content */}
+      <div
+        className={`${messages.length ? 'pt-[10vh]' : 'pt-[25vh]'} mx-auto flex max-w-4xl flex-col`}
+      >
+        {messages.length === 0 ? (
+          <div className='w-full flex-1 overflow-y-auto p-2'>
+            <h1 className='text-3xl font-bold'>How can I help you?</h1>
+            <div className='my-9 grid grid-cols-4'>
+              <button>Create</button>
+              <button>Explore</button>
+              <button>Code</button>
+              <button>Learn</button>
             </div>
-            <div className="   flex items-center  w-full ">
-              <CiSearch className="absolute left-2  " size={16} />
-              <Input
-                className=" focus:outline-none focus:ring-0 border-0 placeholder:text-sm pl-6 text-sm"
-                id="search"
-                type="text"
-                placeholder="search your chats"
-              />
-              <button>
-                {" "}
-                <IoIosClose size={18} />
-              </button>
-            </div>
-            {/* Resizer handle */}
-            <div
-              onMouseDown={handleMouseDown}
-              className="absolute bg-transparent w-1 top-0 right-0 h-full  hover:cursor-col-resize"
-            ></div>
           </div>
         ) : (
-          <p>:</p>
+          <div className='flex flex-1 flex-col gap-4 overflow-y-auto p-2'>
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`my-2 flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <span
+                  className={`${msg.role === 'user' ? 'rounded-sm border bg-[#372e3e] text-right' : 'bg- self-start text-left'} p-2`}
+                >
+                  {msg.text}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
-        <div className="flex flex-col text-white  ">
-          <div className="  p-2 bg-purple-950 md:hidden">
-            <Button className="text-white p-0" onClick={handleToggleSideBar}>
-              <ToggleIcon />
-            </Button>
-            <Button className="text-white p-0  ">
-              <div className="p-1 font-bold  rounded hover:bg-white/10 cursor-pointer">
-                <CiSearch />
-              </div>
-            </Button>
-          </div>
-          <h1>How can I help you?</h1>
-          <div>
-            <button>Create</button>
-            <button>Explore</button>
-            <button>Code</button>
-            <button>Learn</button>
-          </div>
-        </div>
-      </div>{" "}
+        {/* Input Content */}
+        <ChatInputForm
+          message={message}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+        />
+      </div>
     </div>
   );
 };
 
-export default Main;
+export default Main2;
