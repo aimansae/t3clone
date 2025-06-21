@@ -39,6 +39,7 @@ export default function SignInButton({
       className='fixed inset-0 z-50 flex flex-col items-center justify-center rounded bg-black/80'
     >
       <div className='flex flex-col gap-4 border border-white bg-black p-10'>
+        <h1 className='text-center'>Sigin in </h1>{' '}
         <button
           onClick={() => signIn('github')}
           className='cursor-pointer rounded bg-gray-400 px-4 py-2 hover:bg-gray-400/80'

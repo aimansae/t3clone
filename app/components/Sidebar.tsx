@@ -14,14 +14,22 @@ type SidebarProps = {
   onMouseDown: React.MouseEventHandler<HTMLDivElement>;
   onToggleSideBar: () => void;
   messages?: { role: string; text: string }[];
+  onNewChat: () => void;
+  previousChats: { _id: string; title?: string }[];
+
+  isLoading: boolean;
+  chatId?: string | null;
 };
 const Sidebar = ({
-  messages,
   sidebarRef,
   sideBarWidth,
   isSidebarOpen,
   onToggleSideBar,
   onMouseDown,
+  onNewChat,
+  chatId,
+  previousChats,
+  isLoading,
 }: SidebarProps) => {
   return (
     <div
@@ -40,10 +48,12 @@ const Sidebar = ({
           </Link>
         </Button>
       </div>
-
       <div className='w-full text-center'>
-        <Button className='w-full justify-center border border-[#b04680] bg-[#A3004c33] px-2 py-1 text-center text-sm text-[#fbd0e8] hover:bg-[#a3004c75]'>
-          New Chat
+        <Button
+          className='w-full justify-center border border-[#b04680] bg-[#A3004c33] px-2 py-1 text-center text-sm text-[#fbd0e8] hover:bg-[#a3004c75]'
+          onClick={onNewChat}
+        >
+          New chat
         </Button>
       </div>
       <div className='flex w-full items-center'>
@@ -58,9 +68,27 @@ const Sidebar = ({
           <IoIosClose size={18} />
         </button>
       </div>
-      <div>
-        {messages?.map((msg, index) => <li key={index}>{msg.text}</li>)}
-      </div>
+      {/*Previous chats*/}
+      {isLoading ? (
+        <div className='mt-4 animate-pulse px-2 text-sm text-gray-400'>
+          Loading chats...
+        </div>
+      ) : (
+        previousChats.length > 0 && (
+          <ul className=' '>
+            {previousChats.map((chat) => (
+              <li key={chat._id} className='my-2 w-full hover:bg-[#a3004c75]'>
+                <Link
+                  href={`/chat/${chat._id}`}
+                  className={`${chat._id === chatId ? 'font-bold' : ''}`}
+                >
+                  Chat{chat.title || 'Untitled chat'}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
 
       {/* Resizer handle */}
       <div
